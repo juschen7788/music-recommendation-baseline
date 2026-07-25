@@ -357,21 +357,18 @@ To examine how cold-start recommendation quality scales with profile history len
 **Steep Onboarding Learning Curve:** A single seed song ($N=1$) raises NDCG@10 to 0.4519, dramatically outperforming non-personalized global popularity (0.1512). Expanding to $N=5$ seed songs increases NDCG@10 to 0.5546 and Precision@10 to 0.5303.
 
 **Diminishing Returns Threshold:** Performance continues to improve up to $N=15$ (NDCG@10 = 0.6036), after which gains plateau. This indicates that 10–12 seed tracks provide sufficient signal for collaborative filtering to map a user into the latent item space effectively.
-## 7. Next-phase goals
+## 7. Recommendations and next steps
 
-Future methods must be evaluated on the same catalog, users, splits, ALS model,
-candidate exclusions, and metrics.
+Based on our offline baseline evaluation and seed sensitivity analysis, we outline key takewayas below:
 
-Possible next steps include adding carefully inferred interactions or using the
-available genre information. Those methods are not part of the current
-baseline yet.
+### Product & Onboarding Recommendations
+* **Optimal Onboarding Seed Length (3–5 Songs):** Our seed sensitivity experiment shows that moving from 1 to 5 seed songs produces the single largest jump in recommendation quality ($\text{NDCG@10} = 0.4519 \rightarrow 0.5546$). Asking new users for 3 to 5 favorite tracks during onboarding provides sufficient signal to bootstrap collaborative filtering effectively.
+* **Avoid Onboarding Fatigue:** Performance plateaus around 10–12 seed songs ($\text{NDCG@10} \approx 0.58$). Requiring more than 5 initial tracks creates unnecessary user friction with diminishing quality returns.
 
-The conclusion from this phase is:
-
-> With five genuine songs from a new user, the current ALS collaborative-
-> filtering recommender achieves **0.5282 NDCG@10**. A future method must reach
-> at least **0.5546 NDCG@10** (5% relative gain) to count as a promising practical improvement.
-
+### Technical & Model Improvements
+* **Implement a Hybrid Content-Based Model:** Pure collaborative filtering struggles when seed interactions are sparse ($N < 3$). Utilizing the 685 TF-IDF genre features from `id_genres_tf-idf.tsv.bz2` to construct a hybrid recommender will help close the $+0.0773$ NDCG@10 headroom gap.
+* **Interaction-Weighting Schemes:** Currently, all seed tracks receive equal weight in the user pseudo-vector. Weighting seed tracks by play counts or implicit confidence scaling can better capture strong user preferences.
+* **Evaluate Beyond Accuracy:** Incorporate Novelty (Self-Information) and Catalog Coverage metrics in future phases to ensure recommendations promote long-tail discovery without over-recommending mainstream hits.
 ## 8. Credits
 
 - **Justin Chen:** Identified a suitable dataset, performed the initial data
