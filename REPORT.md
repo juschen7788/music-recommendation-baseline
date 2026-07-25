@@ -167,6 +167,18 @@ This is a retrospective offline experiment. The count file has no timestamps,
 so the split cannot reproduce the stronger real-world test of predicting future
 listens from past listens.
 
+### Model Configuration & Hyperparameters
+
+The baseline recommender trains an implicit Alternating Least Squares (ALS) model on the warm user matrix using the following experimental parameters:
+
+* **Latent Factors ($F$):** 64
+* **Regularization ($\lambda$):** 0.05
+* **Confidence Scaling ($\alpha$):** 40.0
+* **ALS Training Iterations:** 15
+* **Seed Tracks per Cold User:** 5
+* **Recommendation List Size ($K$):** 10
+* **Warm Training Users:** 5,000
+* **Cold Evaluation Users:** 1,000
 ## 4. System
 
 ```mermaid
@@ -283,10 +295,11 @@ resamples of the 1,000 evaluation users. This shows uncertainty across users.
 Both rows use the same trained ALS model. Only the number of genuine
 interactions revealed for the new user changes.
 
-| Input                                    |    NDCG@10 |               95% CI |  Recall@10 | Hit Rate@10 |
-| ---------------------------------------- | ---------: | -------------------: | ---------: | ----------: |
-| Five real seeds: **baseline**            | **0.5282** | **[0.5087, 0.5474]** | **0.0546** |   **0.929** |
-| Fifteen real interactions: **reference** |     0.6055 |     [0.5868, 0.6228] |     0.0625 |       0.970 |
+| Input                                    |    NDCG@10 |               95% CI | Precision@10 |  Recall@10 | Hit Rate@10 |
+| ---------------------------------------- | ---------: | -------------------: | -----------: | ---------: | ----------: |
+| Global popularity baseline               |     0.1327 |     [0.1226, 0.1424] |       0.1265 |     0.0097 |      0.6150 |
+| Five real seeds: **baseline**            | **0.5282** | **[0.5087, 0.5474]** |       0.4962 | **0.0546** |   **0.929** |
+| Fifteen real interactions: **reference** |     0.6055 |     [0.5868, 0.6228] |       0.5786 |     0.0625 |       0.970 |
 
 ![Baseline recommendation results](results/figures/baseline_results.png)
 
@@ -294,12 +307,7 @@ interactions revealed for the new user changes.
 
 The experiment results appear in the three charts above:
 
-**Left: average quality:** each pair of bars compares the five-seed baseline
-(blue) with the 15-real-interaction reference (purple). The horizontal axis
-lists the three metrics, and the vertical axis is their average value across
-1,000 users. Taller is better, but the heights of different metrics should not
-be compared as if they measure the same thing. Compare blue with purple within
-each metric.
+**Left: average quality:** Each cluster of three bars compares the **Global Popularity Baseline** (grey), the **5-Seed ALS Baseline** (blue), and the **15-Real-Interaction Reference** (purple). The horizontal axis lists the metrics (**NDCG@10**, **Recall@10**, and **Hit Rate@10**), and the vertical axis indicates their average score across 1,000 cold-start users. Compare the height of the three bars within each metric group to observe the performance gains from non-personalized to personalized recommendations.
 
 **Middle: baseline differences across users:** the horizontal axis is an
 individual user's NDCG@10, from 0 on the left to 1 on the right. The vertical
@@ -309,23 +317,25 @@ and poorly for others; the average alone hides that variation.
 
 **Right: effect of ten more real interactions:** each user's value is
 
+### Summary of Performance & Metric Comparisons
+
+**Personalization Gain:** The **5-Seed ALS Baseline** achieves an **NDCG@10 of 0.5282**, dramatically outperforming the non-personalized **Global Popularity Baseline** (**0.1327**). A **Hit Rate@10 of 0.929** confirms that 92.9% of cold-start users received at least one relevant track in their top 10 recommendations.
+
+**Precision vs. Recall:** The 5-seed model achieves a **Precision@10 of 0.4962**, meaning roughly half of the top 10 recommended tracks match relevant items in the user's hidden evaluation profile. Recall@10 (**0.0546**) remains lower due to large evaluation catalog sizes per user.
+
+**Headroom Gap:** Providing 10 additional real interactions raises NDCG@10 to **0.6055** (an absolute increase of **+0.0773**, or a **+14.6% relative gain**). This gap defines the headroom available for future augmentation techniques (e.g., content-based metadata) when only 5 initial seeds are known.
+
 $$
 \text{15-real-interaction NDCG@10} - \text{5-seed NDCG@10}.
 $$
 
-The vertical black line is zero. Bars to its right represent users who improve
-with ten more real interactions; bars to its left represent users who get
-worse. The vertical axis counts users. Most of the distribution is on the
-positive side, but not every user benefits.
+The vertical black line is zero. Bars to its right represent users who improve with ten more real interactions; bars to its left represent users who get worse. The vertical axis counts users. Most of the distribution is on the positive side, but not every user benefits.
 
-The baseline NDCG@10 is **0.5282**. Hit Rate@10 of **0.929** means that 92.9%
-of cold-start users received at least one recommendation found in their hidden
-history.
+The non-personalized Global Popularity Baseline achieves an NDCG@10 of 0.1327 and Precision@10 of 0.1265.
 
-The 15-real-interaction reference raises NDCG@10 by **0.0773**, a **14.6%**
-relative increase. Therefore, the trained model can benefit from better
-information about a new user. The five-seed result leaves measurable room for
-the next phase.
+The baseline NDCG@10 is **0.5282** **(a nearly 4× improvement over global popularity)**. **Precision@10 reaches 0.4962, showing that roughly half of top recommendations match relevant hidden user preferences.** Hit Rate@10 of **0.929** means that 92.9% of cold-start users received at least one recommendation found in their hidden history.
+
+The 15-real-interaction reference raises NDCG@10 by **0.0773**, a **14.6%** relative increase **(reaching 0.6055 NDCG@10 and 0.5786 Precision@10)**. Therefore, the trained model can benefit from better information about a new user. The five-seed result leaves measurable room for the next phase.
 
 ## 7. Next-phase goals
 
