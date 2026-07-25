@@ -359,7 +359,7 @@ To examine how cold-start recommendation quality scales with profile history len
 **Diminishing Returns Threshold:** Performance continues to improve up to $N=15$ (NDCG@10 = 0.6036), after which gains plateau. This indicates that 10–12 seed tracks provide sufficient signal for collaborative filtering to map a user into the latent item space effectively.
 ## 7. Recommendations and next steps
 
-Based on our offline baseline evaluation and seed sensitivity analysis, we outline key takewayas below:
+Based on our offline baseline evaluation and seed sensitivity analysis, we outline key takeaways below:
 
 ### Product & Onboarding Recommendations
 * **Optimal Onboarding Seed Length (3–5 Songs):** Our seed sensitivity experiment shows that moving from 1 to 5 seed songs produces the single largest jump in recommendation quality ($\text{NDCG@10} = 0.4519 \rightarrow 0.5546$). Asking new users for 3 to 5 favorite tracks during onboarding provides sufficient signal to bootstrap collaborative filtering effectively.
