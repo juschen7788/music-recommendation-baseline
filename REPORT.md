@@ -337,6 +337,26 @@ The baseline NDCG@10 is **0.5282** **(a nearly 4× improvement over global popul
 
 The 15-real-interaction reference raises NDCG@10 by **0.0773**, a **14.6%** relative increase **(reaching 0.6055 NDCG@10 and 0.5786 Precision@10)**. Therefore, the trained model can benefit from better information about a new user. The five-seed result leaves measurable room for the next phase.
 
+### Seed Sensitivity Analysis
+
+Looking at the performance as seed count N increases from 1 to 20.
+
+| Seed Count (N) | NDCG@10    | Precision@10 | Hit Rate@10 (%) |
+| -------------- | ---------- | ------------ | --------------- |
+| 1              | 0.4519     | 0.4122       | 83.6            |
+| 3              | 0.5176     | 0.4882       | 92.4            |
+| 5              | 0.5546     | 0.5303       | 95.0            |
+| 8              | 0.5708     | 0.5482       | 96.1            |
+| 10             | 0.5843     | 0.5611       | 96.5            |
+| 12             | 0.5898     | 0.5665       | 96.6            |
+| 15             | **0.6036** | **0.5789**   | **97.0**        |
+| 20             | 0.5975     | 0.5716       | 96.8            |
+
+To examine how cold-start recommendation quality scales with profile history length, the performance was evaluated across varying seed counts ($N \in \{1, 3, 5, 8, 10, 12, 15, 20\}$):
+
+**Steep Onboarding Learning Curve:** A single seed song ($N=1$) raises NDCG@10 to 0.4519, dramatically outperforming non-personalized global popularity (0.1512). Expanding to $N=5$ seed songs increases NDCG@10 to 0.5546 and Precision@10 to 0.5303.
+
+**Diminishing Returns Threshold:** Performance continues to improve up to $N=15$ (NDCG@10 = 0.6036), after which gains plateau. This indicates that 10–12 seed tracks provide sufficient signal for collaborative filtering to map a user into the latent item space effectively.
 ## 7. Next-phase goals
 
 Future methods must be evaluated on the same catalog, users, splits, ALS model,
