@@ -8,12 +8,20 @@
     "fifteen_real_interaction_reference": {
       "hit_rate_at_10": 0.97,
       "ndcg_at_10": 0.6054860430366118,
+      "precision_at_10": 0.5786,
       "recall_at_10": 0.06247711206443536
     },
     "five_seed_baseline": {
       "hit_rate_at_10": 0.929,
       "ndcg_at_10": 0.5282154251970487,
+      "precision_at_10": 0.4962,
       "recall_at_10": 0.054602521200220966
+    },
+    "global_popularity_baseline": {
+      "hit_rate_at_10": 0.615,
+      "ndcg_at_10": 0.1327030619010227,
+      "precision_at_10": 0.1265,
+      "recall_at_10": 0.009728796219457714
     }
   },
   "next_phase_success_goals": {

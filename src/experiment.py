@@ -37,6 +37,22 @@ def precision_at_k(ranked: np.ndarray, relevant: set[int], k: int) -> float:
     hits = sum(1 for item in top_k if item in relevant)
     return float(hits / k)
 
+def popularity_at_k(global_popular_items: np.ndarray, relevant: set[int], k: int) -> tuple[float, float, float, float]:
+    ranked = global_popular_items[:k]
+    hits = len(set(ranked) & relevant)
+    
+    prec = hits / k if k > 0 else 0.0
+    rec = hits / len(relevant) if relevant else 0.0
+    hr = 1.0 if hits > 0 else 0.0
+    
+    hit_array = np.fromiter((int(item in relevant) for item in ranked), dtype=np.float64)
+    dcg = float(np.sum(hit_array / np.log2(np.arange(2, len(hit_array) + 2))))
+    ideal_hits = min(k, len(relevant))
+    ideal = float(np.sum(1.0 / np.log2(np.arange(2, ideal_hits + 2)))) if ideal_hits > 0 else 1.0
+    ndcg = dcg / ideal if ideal > 0 else 0.0
+    
+    return ndcg, rec, prec, hr
+
 
 def _top_k(scores: np.ndarray, excluded: set[int], k: int) -> np.ndarray:
     safe = scores.copy()
@@ -91,8 +107,8 @@ def _summarize(metrics: pd.DataFrame, config: Config) -> pd.DataFrame:
 
 def _plot_results(metrics: pd.DataFrame) -> None:
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-    order = ["five_seed_baseline", "fifteen_real_interaction_reference"]
-    labels = ["5-seed baseline", "15-real-interaction reference"]
+    order = ["global_popularity_baseline", "five_seed_baseline", "fifteen_real_interaction_reference"]
+    labels = ["Popularity", "5-Seed Baseline", "15-Interaction Ref"]
     grouped = metrics.groupby("condition")
     ndcg = grouped["ndcg_at_10"].mean().reindex(order)
     recall = grouped["recall_at_10"].mean().reindex(order)
@@ -190,6 +206,10 @@ def run_experiment(config: Config = CONFIG) -> dict:
         shape=(len(warm_users), len(catalog)),
     )
 
+    # 1. Compute Top-10 Global Popularity baseline items
+    global_item_counts = np.asarray(warm_matrix.sum(axis=0)).ravel()
+    global_top_10 = np.argsort(global_item_counts)[::-1][:config.recommendation_k]
+
     model = AlternatingLeastSquares(
         factors=config.als_factors,
         regularization=config.als_regularization,
@@ -215,7 +235,24 @@ def run_experiment(config: Config = CONFIG) -> dict:
         probe_items, probe_counts = items[probe_pos], counts[probe_pos]
         test_items = items[test_pos]
 
-        conditions = {
+        relevant = set(map(int, test_items))
+        excluded = set(map(int, seed_items)) | set(map(int, probe_items))
+
+        # 2. Evaluate Global Popularity Baseline for this user
+        pop_ndcg, pop_rec, pop_prec, pop_hr = popularity_at_k(global_top_10, relevant, config.recommendation_k)
+        metric_rows.append(
+            {
+                "user_id": user_id,
+                "condition": "global_popularity_baseline",
+                "ndcg_at_10": pop_ndcg,
+                "recall_at_10": pop_rec,
+                "precision_at_10": pop_prec,
+                "hit_rate_at_10": pop_hr,
+            }
+        )
+
+        # 3. Evaluate ALS Conditions (5-Seed and 15-Interaction)
+        als_conditions = {
             "five_seed_baseline": (seed_items, _confidence(seed_counts, config.real_confidence_alpha)),
             "fifteen_real_interaction_reference": (
                 np.r_[seed_items, probe_items],
@@ -225,23 +262,21 @@ def run_experiment(config: Config = CONFIG) -> dict:
                 ],
             ),
         }
-        relevant = set(map(int, test_items))
-        excluded = set(map(int, seed_items)) | set(map(int, probe_items))
-        for condition, (condition_items, condition_values) in conditions.items():
+
+        for condition, (condition_items, condition_values) in als_conditions.items():
             row = _user_row(condition_items, condition_values, len(catalog))
             with threadpool_limits(limits=1, user_api="blas"):
                 user_factor = model.recalculate_user(0, row)
                 scores = model.item_factors @ user_factor
             ranked = _top_k(scores, excluded, config.recommendation_k)
 
-            p_10 = precision_at_k(ranked, relevant, config.recommendation_k)
             metric_rows.append(
                 {
                     "user_id": user_id,
                     "condition": condition,
                     "ndcg_at_10": ndcg_at_k(ranked, relevant, config.recommendation_k),
                     "recall_at_10": recall_at_k(ranked, relevant, config.recommendation_k),
-                    "precision_at_10": p_10,
+                    "precision_at_10": precision_at_k(ranked, relevant, config.recommendation_k),
                     "hit_rate_at_10": float(bool(set(ranked) & relevant)),
                 }
             )
@@ -251,7 +286,7 @@ def run_experiment(config: Config = CONFIG) -> dict:
     summaries.to_csv(RESULTS_DIR / "baseline_summary_metrics.csv", index=False)
     _plot_results(metrics)
 
-    means = metrics.groupby("condition")[["ndcg_at_10", "recall_at_10", "hit_rate_at_10"]].mean()
+    means = metrics.groupby("condition")[["ndcg_at_10", "recall_at_10", "precision_at_10", "hit_rate_at_10"]].mean()
     baseline_ndcg = float(means.loc["five_seed_baseline", "ndcg_at_10"])
     reference_ndcg = float(means.loc["fifteen_real_interaction_reference", "ndcg_at_10"])
     summary = {
