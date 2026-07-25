@@ -30,6 +30,13 @@ def ndcg_at_k(ranked: np.ndarray, relevant: set[int], k: int) -> float:
 def recall_at_k(ranked: np.ndarray, relevant: set[int], k: int) -> float:
     return len(set(ranked[:k]) & relevant) / len(relevant) if relevant else 0.0
 
+def precision_at_k(ranked: np.ndarray, relevant: set[int], k: int) -> float:
+    if len(ranked) == 0 or k <= 0:
+        return 0.0
+    top_k = ranked[:k]
+    hits = sum(1 for item in top_k if item in relevant)
+    return float(hits / k)
+
 
 def _top_k(scores: np.ndarray, excluded: set[int], k: int) -> np.ndarray:
     safe = scores.copy()
@@ -64,7 +71,7 @@ def _summarize(metrics: pd.DataFrame, config: Config) -> pd.DataFrame:
     rng = np.random.default_rng(config.random_seed + 99)
     rows = []
     for condition, frame in metrics.groupby("condition", sort=False):
-        for metric in ("ndcg_at_10", "recall_at_10", "hit_rate_at_10"):
+        for metric in ("ndcg_at_10", "recall_at_10", "precision_at_10", "hit_rate_at_10"):
             values = frame[metric].to_numpy(dtype=float)
             low, high = _bootstrap_interval(values, rng, config.bootstrap_resamples)
             rows.append(
@@ -226,12 +233,15 @@ def run_experiment(config: Config = CONFIG) -> dict:
                 user_factor = model.recalculate_user(0, row)
                 scores = model.item_factors @ user_factor
             ranked = _top_k(scores, excluded, config.recommendation_k)
+
+            p_10 = precision_at_k(ranked, relevant, config.recommendation_k)
             metric_rows.append(
                 {
                     "user_id": user_id,
                     "condition": condition,
                     "ndcg_at_10": ndcg_at_k(ranked, relevant, config.recommendation_k),
                     "recall_at_10": recall_at_k(ranked, relevant, config.recommendation_k),
+                    "precision_at_10": p_10,
                     "hit_rate_at_10": float(bool(set(ranked) & relevant)),
                 }
             )
