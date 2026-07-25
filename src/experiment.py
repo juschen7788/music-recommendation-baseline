@@ -109,10 +109,12 @@ def _plot_results(metrics: pd.DataFrame) -> None:
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     order = ["global_popularity_baseline", "five_seed_baseline", "fifteen_real_interaction_reference"]
     labels = ["Popularity", "5-Seed Baseline", "15-Interaction Ref"]
+    
     grouped = metrics.groupby("condition")
     ndcg = grouped["ndcg_at_10"].mean().reindex(order)
     recall = grouped["recall_at_10"].mean().reindex(order)
     hit_rate = grouped["hit_rate_at_10"].mean().reindex(order)
+    
     baseline = metrics.loc[
         metrics.condition == "five_seed_baseline"
     ].set_index("user_id")["ndcg_at_10"]
@@ -122,30 +124,24 @@ def _plot_results(metrics: pd.DataFrame) -> None:
 
     fig, axes = plt.subplots(1, 3, figsize=(14.5, 4.2))
     x = np.arange(3)
-    width = 0.36
-    baseline_means = [ndcg.iloc[0], recall.iloc[0], hit_rate.iloc[0]]
-    reference_means = [ndcg.iloc[1], recall.iloc[1], hit_rate.iloc[1]]
-    axes[0].bar(
-        x - width / 2,
-        baseline_means,
-        width,
-        label=labels[0],
-        color="#35618f",
-    )
-    axes[0].bar(
-        x + width / 2,
-        reference_means,
-        width,
-        label=labels[1],
-        color="#7b4ab5",
-    )
+    width = 0.25
+    
+    pop_means = [ndcg.iloc[0], recall.iloc[0], hit_rate.iloc[0]]
+    baseline_means = [ndcg.iloc[1], recall.iloc[1], hit_rate.iloc[1]]
+    reference_means = [ndcg.iloc[2], recall.iloc[2], hit_rate.iloc[2]]
+    
+    axes[0].bar(x - width, pop_means, width, label=labels[0], color="#888888")
+    axes[0].bar(x, baseline_means, width, label=labels[1], color="#35618f")
+    axes[0].bar(x + width, reference_means, width, label=labels[2], color="#7b4ab5")
+    
     axes[0].set_xticks(x, ["NDCG@10", "Recall@10", "Hit Rate@10"])
     axes[0].set(
-        title="Average quality: 5 vs 15 real interactions",
+        title="Average quality across baseline conditions",
         ylabel="Average score across 1,000 users",
         ylim=(0, 1.05),
     )
     axes[0].legend()
+    
     axes[1].hist(baseline, bins=35, color="#35618f")
     axes[1].axvline(
         baseline.mean(),
@@ -159,6 +155,7 @@ def _plot_results(metrics: pd.DataFrame) -> None:
         ylabel="Number of users",
     )
     axes[1].legend()
+    
     delta = reference - baseline
     axes[2].hist(delta, bins=35, color="#7b4ab5")
     axes[2].axvline(0, color="black", linewidth=1)
